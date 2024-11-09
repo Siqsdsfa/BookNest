@@ -1,9 +1,10 @@
+import 'package:booknest/core/navbar.dart';
 import 'package:booknest/data/book_info.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:booknest/screens/item_description_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:booknest/core/globals.dart' as globals;
 
 class HomeScreen extends StatefulWidget {
   static const String name = 'home';
@@ -22,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   CollectionReference collRef =
       FirebaseFirestore.instance.collection("books_info");
+  final _currentUser = FirebaseAuth.instance.currentUser!;
 
   bool _validURL = false;
   bool isCheckingImage = false;
@@ -52,6 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
             imageURL: element['imageURL'],
             uploadedBy: element['uploadedBy'],
             docID: element['docID'],
+            likes: int.tryParse(element['likes']) ?? 0,
+            dislikes: int.tryParse(element['dislikes']) ?? 0,
           ),
         )
         .toList();
@@ -70,43 +74,47 @@ class _HomeScreenState extends State<HomeScreen> {
         _fetchingRequired = false;
       });
     }
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black,
-        title: const Text("BookNest"),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _fetchingRequired = true;
-                _isLoading = true;
-              });
-            },
-            icon: const Icon(Icons.refresh_rounded, size: 35),
-          ),
-        ],
-      ),
-      body: _toggleLoadingPage(),
-      floatingActionButton: GestureDetector(
-        onTap: () {
-          clearTextControllers();
-          createNewBook();
-        },
-        child: Container(
-          width: 50,
-          height: 50,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.lightBlue,
-          ),
-          child: const Icon(
-            Icons.add,
-            color: Colors.white,
-            size: 25,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) => context.pushNamed(HomeScreen.name),
+      child: Scaffold(
+        drawer: const NavBar(),
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.black,
+          title: const Text("BookNest"),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _fetchingRequired = true;
+                  _isLoading = true;
+                });
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 35),
+            ),
+          ],
+        ),
+        body: _toggleLoadingPage(),
+        floatingActionButton: GestureDetector(
+          onTap: () {
+            clearTextControllers();
+            createNewBook();
+          },
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.lightBlue,
+            ),
+            child: const Icon(
+              Icons.add,
+              color: Colors.white,
+              size: 25,
+            ),
           ),
         ),
       ),
@@ -138,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Welcome ${globals.email}'),
+              Text('Welcome ${_currentUser.email}'),
               const SizedBox(height: 40),
               ListView.builder(
                 itemCount: _booksList.length,
@@ -146,42 +154,53 @@ class _HomeScreenState extends State<HomeScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 itemBuilder: (context, index) {
                   final tile = _booksList[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Card(
-                      elevation: 4,
-                      shadowColor: Colors.black12,
-                      child: ListTile(
-                        leading: IconButton(
-                          onPressed: () {
-                            _goToBookDetails(context, tile);
-                          },
-                          icon: const Icon(Icons.open_in_new),
-                        ),
-                        title: Column(
-                          children: [
-                            Text(
-                              tile.title,
-                              style: const TextStyle(fontSize: 20),
-                              textAlign: TextAlign.center,
+                  return Column(
+                    children: [
+                      SizedBox(
+                        width: double.maxFinite,
+                        height: 150,
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              animationDuration: const Duration(
+                                  milliseconds:
+                                      500), //need modification on onPressed animation
+                              shape: const RoundedRectangleBorder(),
                             ),
-                            tryCreateImage(tile.imageURL),
-                          ],
-                        ),
-                        trailing: IconButton(
-                          onPressed: () async {
-                            _isLoading = true;
-                            await deleteBook(_booksList[index].docID);
-                            if (mounted) {
-                              setState(() {
-                                _fetchingRequired = true;
-                              });
-                            }
-                          },
-                          icon: const Icon(Icons.remove_rounded),
+                            onPressed: () {
+                              _goToBookDetails(context, tile);
+                            },
+                            child: Row(
+                              children: [
+                                tryCreateImage(tile.imageURL),
+                                const SizedBox(width: 15),
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        tile.title,
+                                        style: const TextStyle(
+                                            fontSize: 20, color: Colors.black),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      Text(tile.autor,
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.black)),
+                                    ],
+                                  ),
+                                )
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      const Divider(color: Color.fromARGB(135, 162, 162, 162)),
+                    ],
                   );
                 },
               ),
@@ -195,15 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _goToBookDetails(BuildContext context, BookInfo tile) {
     context.pushNamed(
       DescriptionScreen.name,
-      extra: BookInfo(
-        title: tile.title,
-        autor: tile.autor,
-        description: tile.description,
-        publishDate: tile.publishDate,
-        imageURL: tile.imageURL,
-        uploadedBy: tile.uploadedBy,
-        docID: tile.docID,
-      ),
+      extra: tile,
     );
   }
 
@@ -215,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return AlertDialog(
                 insetPadding: const EdgeInsets.only(top: 60, bottom: 60),
                 scrollable: true,
-                title: const Text("Book"),
+                title: const Text("Upload Book"),
                 content: Column(
                   children: [
                     createNewBookTextField('Title',
@@ -265,8 +276,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget tryCreateImage(String url) {
     return Image.network(
       url,
-      height: 200,
-      width: double.maxFinite,
+      height: 150,
+      width: 150,
       errorBuilder: (context, error, stackTrace) {
         return const Icon(Icons.image_not_supported, size: 120);
       },
@@ -310,8 +321,10 @@ class _HomeScreenState extends State<HomeScreen> {
       'description': descriptionController.text,
       'publishDate': publishDateController.text,
       'imageURL': imageURLController.text,
-      'uploadedBy': globals.userID,
+      'uploadedBy': _currentUser.uid,
       'docID': '',
+      'likes': '0',
+      'dislikes': '0',
     }).then((DocumentReference doc) {
       collRef.doc(doc.id).update({
         'docID': doc.id.toString(),
@@ -333,22 +346,22 @@ class _HomeScreenState extends State<HomeScreen> {
     imageURLController.clear();
     isCheckingImage = false;
   }
-}
 
-Widget createNewBookTextField(
-    String title, Icon icon, TextEditingController controller) {
-  return TextField(
-    decoration: InputDecoration(
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
+  Widget createNewBookTextField(
+      String title, Icon icon, TextEditingController controller) {
+    return TextField(
+      decoration: InputDecoration(
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        labelText: title,
+        prefixIcon: icon,
+        hintText: title,
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      labelText: title,
-      prefixIcon: icon,
-      hintText: title,
-    ),
-    controller: controller,
-  );
+      controller: controller,
+    );
+  }
 }

@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:booknest/core/globals.dart' as globals;
 
 class Auth {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -31,11 +30,4 @@ class Auth {
   Future<void> signOut() async {
     await _firebaseAuth.signOut();
   }
-}
-
-getUID() {
-  User? user = FirebaseAuth.instance.currentUser;
-  String uid;
-  uid = user!.uid;
-  globals.userID = uid;
 }

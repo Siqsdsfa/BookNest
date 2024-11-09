@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:booknest/data/book_info.dart';
 import 'package:booknest/screens/home_screen.dart';
@@ -24,4 +25,5 @@ final appRouter = GoRouter(
       ),
     ),
   ],
+  initialLocation: FirebaseAuth.instance.currentUser != null ? '/home' : '/',
 );

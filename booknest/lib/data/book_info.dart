@@ -1,7 +1,6 @@
 import 'dart:convert';
 
-BookInfo userInfoFromJson(String str) =>
-    BookInfo.fromJson(json.decode(str));
+BookInfo userInfoFromJson(String str) => BookInfo.fromJson(json.decode(str));
 
 String userInfoToJson(BookInfo data) => json.encode(data.toJson());
 
@@ -13,6 +12,8 @@ class BookInfo {
   String imageURL;
   String uploadedBy;
   String docID;
+  int likes;
+  int dislikes;
 
   BookInfo({
     required this.title,
@@ -22,10 +23,11 @@ class BookInfo {
     required this.imageURL,
     required this.uploadedBy,
     required this.docID,
+    required this.likes,
+    required this.dislikes,
   });
 
-  factory BookInfo.fromJson(Map<String, dynamic> json) =>
-      BookInfo(
+  factory BookInfo.fromJson(Map<String, dynamic> json) => BookInfo(
         title: json["title"],
         autor: json["autor"],
         description: json["description"],
@@ -33,6 +35,8 @@ class BookInfo {
         imageURL: json["imageURL"],
         uploadedBy: json["uploadedBy"],
         docID: json["docID"],
+        likes: json["likes"],
+        dislikes: json["dislikes"],
       );
 
   Map<String, dynamic> toJson() => {
@@ -43,5 +47,7 @@ class BookInfo {
         "imageURL": imageURL,
         "uploadedBy": uploadedBy,
         "docID": docID,
+        "likes": likes,
+        "dislikes": dislikes,
       };
 }

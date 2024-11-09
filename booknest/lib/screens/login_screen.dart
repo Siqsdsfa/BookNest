@@ -1,5 +1,4 @@
 import 'package:booknest/core/auth.dart';
-import 'package:booknest/core/globals.dart' as globals;
 import 'package:booknest/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -67,23 +66,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    fetchUserData();
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const TabBar(
-            tabs: [
-              Tab(text: 'Log In'),
-              Tab(text: 'Create Account'),
+      child: PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) => context.pushNamed(LoginScreen.name),
+        child: Scaffold(
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            title: const TabBar(
+              tabs: [
+                Tab(text: 'Log In'),
+                Tab(text: 'Create Account'),
+              ],
+            ),
+          ),
+          body: TabBarView(
+            children: [
+              loginScreen(),
+              createAccountScreen(),
             ],
           ),
-        ),
-        body: TabBarView(
-          children: [
-            loginScreen(),
-            createAccountScreen(),
-          ],
         ),
       ),
     );
@@ -269,7 +272,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       await signInWithEmailAndPassword();
       if (succesfulLogin) {
-        fetchUserData();
         if (mounted) {
           context.pushNamed(HomeScreen.name);
         }
@@ -306,7 +308,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (pass == confirmPassword) {
         await createUserWithEmailAndPassword();
         if (succesfulLogin) {
-          fetchUserData();
           if (mounted) {
             context.pushNamed(HomeScreen.name);
           }
@@ -316,14 +317,6 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         createSnackBar('Passwords must be the same');
       }
-    }
-  }
-
-  void fetchUserData() {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      getUID();
-      globals.email = user.email!;
     }
   }
 

@@ -21,59 +21,64 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
   TextEditingController imageURLController = TextEditingController();
   late bool _editMode = false;
   late bool _isCheckingImage = false;
+  late BookInfo? bookInfo = widget.localBookInfo;
 
   CollectionReference collRef =
       FirebaseFirestore.instance.collection("books_info");
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black,
-        title: const Text('Book Description'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            onPressed: () {
-              deleteBook(widget.localBookInfo!.docID);
-            },
-            icon: const Icon(Icons.delete_forever_rounded, size: 35),
-          ),
-        ],
-      ),
-      floatingActionButton: GestureDetector(
-        onTap: () {
-          if (_editMode) {
-            handleUploadBook();
-            setState(() {
-              _editMode = false;
-            });
-          } else {
-            setTextControllers();
-            setState(() {
-              _editMode = true;
-            });
-          }
-        },
-        child: Container(
-          width: 50,
-          height: 50,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.lightBlue,
-          ),
-          child: Icon(
-            _editMode ? Icons.check : Icons.edit,
-            color: Colors.white,
-            size: 25,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) => context.pushNamed(HomeScreen.name),
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.black,
+          title: const Text('Book Description'),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              onPressed: () {
+                deleteBook(bookInfo!.docID);
+              },
+              icon: const Icon(Icons.delete_forever_rounded, size: 35),
+            ),
+          ],
+        ),
+        floatingActionButton: GestureDetector(
+          onTap: () {
+            if (_editMode) {
+              handleUploadBook();
+              setState(() {
+                _editMode = false;
+              });
+            } else {
+              setTextControllers();
+              setState(() {
+                _editMode = true;
+              });
+            }
+          },
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.lightBlue,
+            ),
+            child: Icon(
+              _editMode ? Icons.check : Icons.edit,
+              color: Colors.white,
+              size: 25,
+            ),
           ),
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(15.0),
-        child: _toggleEditMode(),
+        body: Padding(
+          padding: const EdgeInsets.all(15.0),
+          child: _toggleEditMode(),
+        ),
       ),
     );
   }
@@ -122,21 +127,20 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
     return ListView(
       children: [
         Text(
-          '${widget.localBookInfo?.title} (${widget.localBookInfo?.publishDate})',
+          '${bookInfo?.title} (${bookInfo?.publishDate})',
           style: const TextStyle(
             fontSize: 30,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 5),
-        Text('${widget.localBookInfo?.autor}',
-            style: const TextStyle(fontSize: 20)),
+        Text('${bookInfo?.autor}', style: const TextStyle(fontSize: 20)),
         const SizedBox(height: 10),
-        tryCreateImage('${widget.localBookInfo?.imageURL}'),
+        tryCreateImage('${bookInfo?.imageURL}'),
+        likesBar(),
         const SizedBox(height: 10),
-        Text('${widget.localBookInfo?.description}',
-            style: const TextStyle(fontSize: 15)),
-        Text('Created by user: ${widget.localBookInfo?.uploadedBy}',
+        Text('${bookInfo?.description}', style: const TextStyle(fontSize: 15)),
+        Text('Created by user: ${bookInfo?.uploadedBy}',
             style: const TextStyle(fontSize: 10)),
       ],
     );
@@ -150,29 +154,30 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
   }
 
   Future<void> handleUploadBook() async {
-    await collRef.doc(widget.localBookInfo?.docID).update({
+    if (mounted) {
+      setState(() {
+        bookInfo?.title = titleController.text;
+        bookInfo?.autor = autorController.text;
+        bookInfo?.description = descriptionController.text;
+        bookInfo?.publishDate = publishDateController.text;
+        bookInfo?.imageURL = imageURLController.text;
+      });
+    }
+    await collRef.doc(bookInfo?.docID).update({
       'title': titleController.text,
       'autor': autorController.text,
       'description': descriptionController.text,
       'publishDate': publishDateController.text,
       'imageURL': imageURLController.text,
     });
-
-    if (mounted) {
-      widget.localBookInfo?.title = titleController.text;
-      widget.localBookInfo?.autor = autorController.text;
-      widget.localBookInfo?.description = descriptionController.text;
-      widget.localBookInfo?.publishDate = publishDateController.text;
-      widget.localBookInfo?.imageURL = imageURLController.text;
-    }
   }
 
   void setTextControllers() {
-    titleController.text = widget.localBookInfo!.title;
-    autorController.text = widget.localBookInfo!.autor;
-    descriptionController.text = widget.localBookInfo!.description;
-    publishDateController.text = widget.localBookInfo!.publishDate;
-    imageURLController.text = widget.localBookInfo!.imageURL;
+    titleController.text = bookInfo!.title;
+    autorController.text = bookInfo!.autor;
+    descriptionController.text = bookInfo!.description;
+    publishDateController.text = bookInfo!.publishDate;
+    imageURLController.text = bookInfo!.imageURL;
     _isCheckingImage = false;
   }
 
@@ -202,6 +207,59 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
         hintText: title,
       ),
       controller: controller,
+    );
+  }
+
+  Widget likesBar() {
+    return SizedBox(
+      height: 40,
+      width: double.maxFinite,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton(
+            onPressed: () async {
+              int intLikes = bookInfo!.likes.toInt();
+              intLikes = intLikes + 1;
+              setState(() {
+                bookInfo?.likes = intLikes;
+              });
+              await collRef.doc(bookInfo?.docID).update({
+                'likes': intLikes.toString(),
+              });
+            },
+            child: Row(
+              children: [
+                const Icon(Icons.thumb_up, color: Colors.black),
+                const SizedBox(width: 10),
+                Text(bookInfo!.likes.toString(),
+                    style: const TextStyle(color: Colors.black)),
+              ],
+            ),
+          ),
+          const VerticalDivider(),
+          ElevatedButton(
+            onPressed: () async {
+              int intDislikes = bookInfo!.dislikes.toInt();
+              intDislikes = intDislikes + 1;
+              setState(() {
+                bookInfo?.dislikes = intDislikes;
+              });
+              await collRef.doc(bookInfo?.docID).update({
+                'dislikes': intDislikes.toString(),
+              });
+            },
+            child: Row(
+              children: [
+                const Icon(Icons.thumb_down, color: Colors.black),
+                const SizedBox(width: 10),
+                Text(bookInfo!.dislikes.toString(),
+                    style: const TextStyle(color: Colors.black)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
