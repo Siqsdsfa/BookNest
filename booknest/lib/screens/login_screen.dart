@@ -64,7 +64,9 @@ class _LoginScreenState extends State<LoginScreen>
     _emailController.clear();
     _passwordController.clear();
     _confirmPasswordController.clear();
-    hidePass = true;
+    setState(() {
+      hidePass = true;
+    });
   }
 
   @override

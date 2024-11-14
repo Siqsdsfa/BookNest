@@ -231,7 +231,7 @@ class _LikesAndDislikesScreenState extends State<LikesAndDislikesScreen> {
         ],
       );
     } else {
-      return const Center(child: Text('No books liked yet!'));
+      return const Center(child: Text('You haven\'t liked anything yet!'));
     }
   }
 
@@ -294,7 +294,7 @@ class _LikesAndDislikesScreenState extends State<LikesAndDislikesScreen> {
         ],
       );
     } else {
-      return const Center(child: Text('It seems you don\' dilike anything!'));
+      return const Center(child: Text('You haven\'t disliked anything yet!'));
     }
   }
 }
