@@ -1,4 +1,5 @@
 import 'package:booknest/core/auth.dart';
+import 'package:booknest/screens/likes_and_dislikes_screen.dart';
 import 'package:booknest/screens/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,13 @@ class NavBar extends StatelessWidget {
             ),
             decoration:
                 const BoxDecoration(color: Color.fromARGB(255, 106, 205, 230)),
+          ),
+          ListTile(
+            leading: const Icon(Icons.favorite),
+            title: const Text('Likes and Dislikes'),
+            onTap: () {
+              context.pushNamed(LikesAndDislikesScreen.name);
+            },
           ),
           ListTile(
             leading: const Icon(Icons.logout_rounded),

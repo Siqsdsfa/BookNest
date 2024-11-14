@@ -4,6 +4,7 @@ import 'package:booknest/data/book_info.dart';
 import 'package:booknest/screens/home_screen.dart';
 import 'package:booknest/screens/item_description_screen.dart';
 import 'package:booknest/screens/login_screen.dart';
+import 'package:booknest/screens/likes_and_dislikes_screen.dart';
 
 final appRouter = GoRouter(
   routes: [
@@ -23,6 +24,11 @@ final appRouter = GoRouter(
       builder: (context, state) => DescriptionScreen(
         localBookInfo: state.extra as BookInfo,
       ),
+    ),
+    GoRoute(
+      name: LikesAndDislikesScreen.name,
+      path: '/likes_dislikes',
+      builder: (context, state) => const LikesAndDislikesScreen(),
     ),
   ],
   initialLocation: FirebaseAuth.instance.currentUser != null ? '/home' : '/',

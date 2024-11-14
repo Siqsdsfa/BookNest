@@ -1,9 +1,9 @@
 import 'package:booknest/core/navbar.dart';
+import 'package:booknest/core/utils.dart';
 import 'package:booknest/data/book_info.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:booknest/screens/item_description_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -16,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   TextEditingController titleController = TextEditingController();
-  TextEditingController autorController = TextEditingController();
+  TextEditingController writerController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
   TextEditingController publishDateController = TextEditingController();
   TextEditingController imageURLController = TextEditingController();
@@ -32,30 +32,36 @@ class _HomeScreenState extends State<HomeScreen> {
   late bool _fetchingRequired = true;
   List<BookInfo> _booksList = [];
 
-  fetchRecords() async {
-    var records =
-        await FirebaseFirestore.instance.collection("books_info").get();
-    await mapRecords(records);
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+  void fetchRecords() async {
+    QuerySnapshot<Map<String, dynamic>> records;
+    try {
+      records = await FirebaseFirestore.instance.collection("books_info").get();
+      mapRecords(records);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint(e.toString());
     }
   }
 
-  mapRecords(QuerySnapshot<Map<String, dynamic>> records) {
+  void mapRecords(QuerySnapshot<Map<String, dynamic>> records) {
     var list = records.docs
         .map(
           (element) => BookInfo(
             title: element['title'],
-            autor: element['autor'],
+            writer: element['writer'],
             description: element['description'],
             publishDate: element['publishDate'],
             imageURL: element['imageURL'],
             uploadedBy: element['uploadedBy'],
             docID: element['docID'],
-            likes: int.tryParse(element['likes']) ?? 0,
-            dislikes: int.tryParse(element['dislikes']) ?? 0,
+            likes: element['likes'],
+            dislikes: element['dislikes'],
+            usersLikes: element['usersLikes'],
+            usersDislikes: element['usersDislikes'],
           ),
         )
         .toList();
@@ -132,9 +138,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _notLoadedPage() {
-    return const Padding(
-      padding: EdgeInsets.all(15),
-      child: Center(child: CircularProgressIndicator()),
+    return Padding(
+      padding: const EdgeInsets.all(15),
+      child: ListView.separated(
+        itemBuilder: (context, index) => const PublicationCardSkeleton(),
+        separatorBuilder: (context, index) => const SizedBox(height: 16),
+        itemCount: 10,
+      ),
     );
   }
 
@@ -146,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Welcome ${_currentUser.email}'),
+              Text('Welcome ${_currentUser.email}!'),
               const SizedBox(height: 40),
               ListView.builder(
                 itemCount: _booksList.length,
@@ -165,13 +175,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.transparent,
                               shadowColor: Colors.transparent,
-                              animationDuration: const Duration(
-                                  milliseconds:
-                                      500), //need modification on onPressed animation
                               shape: const RoundedRectangleBorder(),
                             ),
                             onPressed: () {
-                              _goToBookDetails(context, tile);
+                              goToBookDetails(context, tile);
                             },
                             child: Row(
                               children: [
@@ -187,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             fontSize: 20, color: Colors.black),
                                         textAlign: TextAlign.center,
                                       ),
-                                      Text(tile.autor,
+                                      Text(tile.writer,
                                           style: const TextStyle(
                                               fontSize: 12,
                                               color: Colors.black)),
@@ -211,13 +218,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _goToBookDetails(BuildContext context, BookInfo tile) {
-    context.pushNamed(
-      DescriptionScreen.name,
-      extra: tile,
-    );
-  }
-
   Future createNewBook() => showDialog(
         context: context,
         builder: (context) {
@@ -229,23 +229,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: const Text("Upload Book"),
                 content: Column(
                   children: [
-                    createNewBookTextField('Title',
+                    bookTextField('Title',
                         const Icon(Icons.text_fields_rounded), titleController),
                     const SizedBox(height: 5),
-                    createNewBookTextField(
-                        'Autor', const Icon(Icons.person), autorController),
+                    bookTextField(
+                        'Writer', const Icon(Icons.person), writerController),
                     const SizedBox(height: 5),
-                    createNewBookTextField(
+                    bookTextField(
                         'Description',
                         const Icon(Icons.text_fields_rounded),
                         descriptionController),
                     const SizedBox(height: 5),
-                    createNewBookTextField(
+                    bookTextField(
                         'Date of publication',
                         const Icon(Icons.date_range_outlined),
                         publishDateController),
                     const SizedBox(height: 5),
-                    createNewBookTextField('Image url', const Icon(Icons.link),
+                    bookTextField('Image url', const Icon(Icons.link),
                         imageURLController),
                     const SizedBox(height: 5),
                     TextButton(
@@ -273,20 +273,9 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       );
 
-  Widget tryCreateImage(String url) {
-    return Image.network(
-      url,
-      height: 150,
-      width: 150,
-      errorBuilder: (context, error, stackTrace) {
-        return const Icon(Icons.image_not_supported, size: 120);
-      },
-    );
-  }
-
   Future<void> handleCreateNewBook(BuildContext context) async {
     if (titleController.text.isEmpty ||
-        autorController.text.isEmpty ||
+        writerController.text.isEmpty ||
         descriptionController.text.isEmpty ||
         publishDateController.text.isEmpty ||
         imageURLController.text.isEmpty) {
@@ -317,14 +306,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> uploadBook() async {
     var pushRef = await collRef.add({
       'title': titleController.text,
-      'autor': autorController.text,
+      'writer': writerController.text,
       'description': descriptionController.text,
       'publishDate': publishDateController.text,
       'imageURL': imageURLController.text,
       'uploadedBy': _currentUser.uid,
       'docID': '',
-      'likes': '0',
-      'dislikes': '0',
+      'likes': 0,
+      'dislikes': 0,
+      'usersLikes': [],
+      'usersDislikes': [],
     }).then((DocumentReference doc) {
       collRef.doc(doc.id).update({
         'docID': doc.id.toString(),
@@ -334,34 +325,12 @@ class _HomeScreenState extends State<HomeScreen> {
     debugPrint(pushRef.toString());
   }
 
-  Future<void> deleteBook(String docID) async {
-    await collRef.doc(docID).delete();
-  }
-
   void clearTextControllers() {
     titleController.clear();
-    autorController.clear();
+    writerController.clear();
     descriptionController.clear();
     publishDateController.clear();
     imageURLController.clear();
     isCheckingImage = false;
-  }
-
-  Widget createNewBookTextField(
-      String title, Icon icon, TextEditingController controller) {
-    return TextField(
-      decoration: InputDecoration(
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        labelText: title,
-        prefixIcon: icon,
-        hintText: title,
-      ),
-      controller: controller,
-    );
   }
 }

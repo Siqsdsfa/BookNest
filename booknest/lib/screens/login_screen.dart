@@ -12,7 +12,9 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
@@ -62,31 +64,59 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.clear();
     _passwordController.clear();
     _confirmPasswordController.clear();
+    hidePass = true;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(vsync: this, length: 2);
+
+    _tabController.addListener(_handleTabSelection);
+  }
+
+  void _handleTabSelection() {
+    if (_tabController.indexIsChanging) {
+      clearFields();
+      switch (_tabController.index) {
+        case 0:
+          debugPrint("Sign in");
+          break;
+        case 1:
+          debugPrint("Sign up");
+          break;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: PopScope(
-        canPop: false,
-        onPopInvoked: (didPop) => context.pushNamed(LoginScreen.name),
-        child: Scaffold(
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            title: const TabBar(
-              tabs: [
-                Tab(text: 'Log In'),
-                Tab(text: 'Create Account'),
-              ],
-            ),
-          ),
-          body: TabBarView(
-            children: [
-              loginScreen(),
-              createAccountScreen(),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) => context.pushNamed(LoginScreen.name),
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Log In'),
+              Tab(text: 'Create Account'),
             ],
           ),
+        ),
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            loginScreen(),
+            createAccountScreen(),
+          ],
         ),
       ),
     );

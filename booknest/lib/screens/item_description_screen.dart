@@ -1,6 +1,8 @@
+import 'package:booknest/core/utils.dart';
 import 'package:booknest/data/book_info.dart';
 import 'package:booknest/screens/home_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,12 +17,16 @@ class DescriptionScreen extends StatefulWidget {
 
 class _DescriptionScreenState extends State<DescriptionScreen> {
   TextEditingController titleController = TextEditingController();
-  TextEditingController autorController = TextEditingController();
+  TextEditingController writerController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
   TextEditingController publishDateController = TextEditingController();
   TextEditingController imageURLController = TextEditingController();
+  final _currentUser = FirebaseAuth.instance.currentUser!;
   late bool _editMode = false;
   late bool _isCheckingImage = false;
+  late bool _checkUserFeedback = true;
+  bool _toggleLike = false;
+  bool _toggleDislike = false;
   late BookInfo? bookInfo = widget.localBookInfo;
 
   CollectionReference collRef =
@@ -28,6 +34,18 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_checkUserFeedback) {
+      setState(() {
+        if (bookInfo!.usersLikes.contains(_currentUser.uid)) {
+          _toggleLike = true;
+          _toggleDislike = false;
+        } else if (bookInfo!.usersDislikes.contains(_currentUser.uid)) {
+          _toggleLike = false;
+          _toggleDislike = true;
+        }
+        _checkUserFeedback = false;
+      });
+    }
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) => context.pushNamed(HomeScreen.name),
@@ -95,20 +113,18 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
     return ListView(
       children: [
         const SizedBox(height: 15),
-        createNewBookTextField(
+        bookTextField(
             'Title', const Icon(Icons.text_fields_rounded), titleController),
         const SizedBox(height: 15),
-        createNewBookTextField(
-            'Autor', const Icon(Icons.person), autorController),
+        bookTextField('Writer', const Icon(Icons.person), writerController),
         const SizedBox(height: 15),
-        createNewBookTextField('Description',
-            const Icon(Icons.text_fields_rounded), descriptionController),
+        bookTextField('Description', const Icon(Icons.text_fields_rounded),
+            descriptionController),
         const SizedBox(height: 15),
-        createNewBookTextField('Date of publication',
+        bookTextField('Date of publication',
             const Icon(Icons.date_range_outlined), publishDateController),
         const SizedBox(height: 15),
-        createNewBookTextField(
-            'Image url', const Icon(Icons.link), imageURLController),
+        bookTextField('Image url', const Icon(Icons.link), imageURLController),
         const SizedBox(height: 15),
         TextButton(
           onPressed: () {
@@ -134,7 +150,7 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
           ),
         ),
         const SizedBox(height: 5),
-        Text('${bookInfo?.autor}', style: const TextStyle(fontSize: 20)),
+        Text('${bookInfo?.writer}', style: const TextStyle(fontSize: 20)),
         const SizedBox(height: 10),
         tryCreateImage('${bookInfo?.imageURL}'),
         likesBar(),
@@ -157,7 +173,7 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
     if (mounted) {
       setState(() {
         bookInfo?.title = titleController.text;
-        bookInfo?.autor = autorController.text;
+        bookInfo?.writer = writerController.text;
         bookInfo?.description = descriptionController.text;
         bookInfo?.publishDate = publishDateController.text;
         bookInfo?.imageURL = imageURLController.text;
@@ -165,7 +181,7 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
     }
     await collRef.doc(bookInfo?.docID).update({
       'title': titleController.text,
-      'autor': autorController.text,
+      'writer': writerController.text,
       'description': descriptionController.text,
       'publishDate': publishDateController.text,
       'imageURL': imageURLController.text,
@@ -174,7 +190,7 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
 
   void setTextControllers() {
     titleController.text = bookInfo!.title;
-    autorController.text = bookInfo!.autor;
+    writerController.text = bookInfo!.writer;
     descriptionController.text = bookInfo!.description;
     publishDateController.text = bookInfo!.publishDate;
     imageURLController.text = bookInfo!.imageURL;
@@ -192,24 +208,6 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
     );
   }
 
-  Widget createNewBookTextField(
-      String title, Icon icon, TextEditingController controller) {
-    return TextField(
-      decoration: InputDecoration(
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        labelText: title,
-        prefixIcon: icon,
-        hintText: title,
-      ),
-      controller: controller,
-    );
-  }
-
   Widget likesBar() {
     return SizedBox(
       height: 40,
@@ -218,48 +216,118 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: _toggleLike ? Colors.blue : Colors.grey),
             onPressed: () async {
-              int intLikes = bookInfo!.likes.toInt();
-              intLikes = intLikes + 1;
-              setState(() {
-                bookInfo?.likes = intLikes;
-              });
-              await collRef.doc(bookInfo?.docID).update({
-                'likes': intLikes.toString(),
-              });
+              handleLike();
             },
             child: Row(
               children: [
-                const Icon(Icons.thumb_up, color: Colors.black),
+                Icon(Icons.thumb_up,
+                    color: _toggleLike ? Colors.white : Colors.black),
                 const SizedBox(width: 10),
                 Text(bookInfo!.likes.toString(),
-                    style: const TextStyle(color: Colors.black)),
+                    style: TextStyle(
+                        color: _toggleLike ? Colors.white : Colors.black)),
               ],
             ),
           ),
           const VerticalDivider(),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: _toggleDislike ? Colors.blue : Colors.grey),
             onPressed: () async {
-              int intDislikes = bookInfo!.dislikes.toInt();
-              intDislikes = intDislikes + 1;
-              setState(() {
-                bookInfo?.dislikes = intDislikes;
-              });
-              await collRef.doc(bookInfo?.docID).update({
-                'dislikes': intDislikes.toString(),
-              });
+              handleDislike();
             },
             child: Row(
               children: [
-                const Icon(Icons.thumb_down, color: Colors.black),
+                Icon(Icons.thumb_down,
+                    color: _toggleDislike ? Colors.white : Colors.black),
                 const SizedBox(width: 10),
                 Text(bookInfo!.dislikes.toString(),
-                    style: const TextStyle(color: Colors.black)),
+                    style: TextStyle(
+                        color: _toggleDislike ? Colors.white : Colors.black)),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  void handleLike() async {
+    int newLikesCount;
+    int newDislikesCount;
+    List<dynamic> elementToList = [_currentUser.uid];
+    if (_toggleDislike) {
+      _toggleDislike = false;
+      newDislikesCount = bookInfo!.dislikes - 1;
+      bookInfo!.dislikes = newDislikesCount;
+
+      await collRef.doc(bookInfo?.docID).update({
+        'usersDislikes': FieldValue.arrayRemove(elementToList),
+        'dislikes': newDislikesCount,
+      });
+    }
+    if (_toggleLike) {
+      _toggleLike = false;
+      newLikesCount = bookInfo!.likes - 1;
+      bookInfo!.likes = newLikesCount;
+
+      await collRef.doc(bookInfo?.docID).update({
+        'usersLikes': FieldValue.arrayRemove(elementToList),
+        'likes': newLikesCount,
+      });
+    } else {
+      _toggleLike = true;
+      newLikesCount = bookInfo!.likes + 1;
+      bookInfo!.likes = newLikesCount;
+
+      await collRef.doc(bookInfo?.docID).update({
+        'usersLikes': FieldValue.arrayUnion(elementToList),
+        'likes': newLikesCount,
+      });
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void handleDislike() async {
+    int newLikesCount;
+    int newDislikesCount;
+    List<dynamic> elementToList = [_currentUser.uid];
+    if (_toggleLike) {
+      _toggleLike = false;
+      newLikesCount = bookInfo!.likes - 1;
+      bookInfo!.likes = newLikesCount;
+
+      await collRef.doc(bookInfo?.docID).update({
+        'usersLikes': FieldValue.arrayRemove(elementToList),
+        'likes': newLikesCount,
+      });
+    }
+    if (_toggleDislike) {
+      _toggleDislike = false;
+      newDislikesCount = bookInfo!.dislikes - 1;
+      bookInfo!.dislikes = newDislikesCount;
+
+      await collRef.doc(bookInfo?.docID).update({
+        'usersDislikes': FieldValue.arrayRemove(elementToList),
+        'dislikes': newDislikesCount,
+      });
+    } else {
+      _toggleDislike = true;
+      newDislikesCount = bookInfo!.dislikes + 1;
+      bookInfo!.dislikes = newDislikesCount;
+
+      await collRef.doc(bookInfo?.docID).update({
+        'usersDislikes': FieldValue.arrayUnion(elementToList),
+        'dislikes': newDislikesCount,
+      });
+    }
+    if (mounted) {
+      setState(() {});
+    }
   }
 }
