@@ -1,6 +1,6 @@
+import 'package:booknest/core/utils.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
-import 'package:booknest/data/book_info.dart';
 import 'package:booknest/screens/home_screen.dart';
 import 'package:booknest/screens/item_description_screen.dart';
 import 'package:booknest/screens/login_screen.dart';
@@ -22,7 +22,7 @@ final appRouter = GoRouter(
       name: DescriptionScreen.name,
       path: '/description',
       builder: (context, state) => DescriptionScreen(
-        localBookInfo: state.extra as BookInfo,
+        previousAndDetailsInfo: state.extra as DetailsScreenData,
       ),
     ),
     GoRoute(

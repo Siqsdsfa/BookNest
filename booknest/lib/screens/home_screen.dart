@@ -178,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               shape: const RoundedRectangleBorder(),
                             ),
                             onPressed: () {
-                              goToBookDetails(context, tile);
+                              goToBookDetails(context, tile, HomeScreen.name);
                             },
                             child: Row(
                               children: [

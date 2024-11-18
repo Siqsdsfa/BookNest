@@ -3,10 +3,20 @@ import 'package:booknest/screens/item_description_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-void goToBookDetails(BuildContext context, BookInfo tile) {
+class DetailsScreenData {
+  String previousScreen;
+  BookInfo bookInfo;
+  DetailsScreenData({
+    required this.previousScreen,
+    required this.bookInfo,
+  });
+}
+
+void goToBookDetails(
+    BuildContext context, BookInfo bookInfo, String prevScreen) {
   context.pushNamed(
     DescriptionScreen.name,
-    extra: tile,
+    extra: DetailsScreenData(previousScreen: prevScreen, bookInfo: bookInfo),
   );
 }
 

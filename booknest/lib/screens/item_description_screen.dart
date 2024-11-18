@@ -8,8 +8,8 @@ import 'package:go_router/go_router.dart';
 
 class DescriptionScreen extends StatefulWidget {
   static const String name = 'description';
-  final BookInfo? localBookInfo;
-  const DescriptionScreen({super.key, this.localBookInfo});
+  final DetailsScreenData previousAndDetailsInfo;
+  const DescriptionScreen({super.key, required this.previousAndDetailsInfo});
 
   @override
   State<DescriptionScreen> createState() => _DescriptionScreenState();
@@ -21,13 +21,15 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
   TextEditingController descriptionController = TextEditingController();
   TextEditingController publishDateController = TextEditingController();
   TextEditingController imageURLController = TextEditingController();
+
   final _currentUser = FirebaseAuth.instance.currentUser!;
-  late bool _editMode = false;
-  late bool _isCheckingImage = false;
-  late bool _checkUserFeedback = true;
+  bool _editMode = false;
+  bool _isCheckingImage = false;
+  bool _checkUserFeedback = true;
   bool _toggleLike = false;
   bool _toggleDislike = false;
-  late BookInfo? bookInfo = widget.localBookInfo;
+  late String prevScreen = widget.previousAndDetailsInfo.previousScreen;
+  late BookInfo bookInfo = widget.previousAndDetailsInfo.bookInfo;
 
   CollectionReference collRef =
       FirebaseFirestore.instance.collection("books_info");
@@ -36,10 +38,10 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
   Widget build(BuildContext context) {
     if (_checkUserFeedback) {
       setState(() {
-        if (bookInfo!.usersLikes.contains(_currentUser.uid)) {
+        if (bookInfo.usersLikes.contains(_currentUser.uid)) {
           _toggleLike = true;
           _toggleDislike = false;
-        } else if (bookInfo!.usersDislikes.contains(_currentUser.uid)) {
+        } else if (bookInfo.usersDislikes.contains(_currentUser.uid)) {
           _toggleLike = false;
           _toggleDislike = true;
         }
@@ -48,7 +50,7 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
     }
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) => context.pushNamed(HomeScreen.name),
+      onPopInvoked: (didPop) => context.pushNamed(prevScreen),
       child: Scaffold(
         appBar: AppBar(
           elevation: 0,
@@ -59,7 +61,7 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
           actions: [
             IconButton(
               onPressed: () {
-                deleteBook(bookInfo!.docID);
+                deleteBook(bookInfo.docID);
               },
               icon: const Icon(Icons.delete_forever_rounded, size: 35),
             ),
@@ -143,20 +145,20 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
     return ListView(
       children: [
         Text(
-          '${bookInfo?.title} (${bookInfo?.publishDate})',
+          '${bookInfo.title} (${bookInfo.publishDate})',
           style: const TextStyle(
             fontSize: 30,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 5),
-        Text('${bookInfo?.writer}', style: const TextStyle(fontSize: 20)),
+        Text(bookInfo.writer, style: const TextStyle(fontSize: 20)),
         const SizedBox(height: 10),
-        tryCreateImage('${bookInfo?.imageURL}'),
+        tryCreateImage(bookInfo.imageURL),
         likesBar(),
         const SizedBox(height: 10),
-        Text('${bookInfo?.description}', style: const TextStyle(fontSize: 15)),
-        Text('Created by user: ${bookInfo?.uploadedBy}',
+        Text(bookInfo.description, style: const TextStyle(fontSize: 15)),
+        Text('Created by user: ${bookInfo.uploadedBy}',
             style: const TextStyle(fontSize: 10)),
       ],
     );
@@ -172,14 +174,14 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
   Future<void> handleUploadBook() async {
     if (mounted) {
       setState(() {
-        bookInfo?.title = titleController.text;
-        bookInfo?.writer = writerController.text;
-        bookInfo?.description = descriptionController.text;
-        bookInfo?.publishDate = publishDateController.text;
-        bookInfo?.imageURL = imageURLController.text;
+        bookInfo.title = titleController.text;
+        bookInfo.writer = writerController.text;
+        bookInfo.description = descriptionController.text;
+        bookInfo.publishDate = publishDateController.text;
+        bookInfo.imageURL = imageURLController.text;
       });
     }
-    await collRef.doc(bookInfo?.docID).update({
+    await collRef.doc(bookInfo.docID).update({
       'title': titleController.text,
       'writer': writerController.text,
       'description': descriptionController.text,
@@ -189,11 +191,11 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
   }
 
   void setTextControllers() {
-    titleController.text = bookInfo!.title;
-    writerController.text = bookInfo!.writer;
-    descriptionController.text = bookInfo!.description;
-    publishDateController.text = bookInfo!.publishDate;
-    imageURLController.text = bookInfo!.imageURL;
+    titleController.text = bookInfo.title;
+    writerController.text = bookInfo.writer;
+    descriptionController.text = bookInfo.description;
+    publishDateController.text = bookInfo.publishDate;
+    imageURLController.text = bookInfo.imageURL;
     _isCheckingImage = false;
   }
 
@@ -226,7 +228,7 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
                 Icon(Icons.thumb_up,
                     color: _toggleLike ? Colors.white : Colors.black),
                 const SizedBox(width: 10),
-                Text(bookInfo!.likes.toString(),
+                Text(bookInfo.likes.toString(),
                     style: TextStyle(
                         color: _toggleLike ? Colors.white : Colors.black)),
               ],
@@ -244,7 +246,7 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
                 Icon(Icons.thumb_down,
                     color: _toggleDislike ? Colors.white : Colors.black),
                 const SizedBox(width: 10),
-                Text(bookInfo!.dislikes.toString(),
+                Text(bookInfo.dislikes.toString(),
                     style: TextStyle(
                         color: _toggleDislike ? Colors.white : Colors.black)),
               ],
@@ -261,29 +263,29 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
     List<dynamic> elementToList = [_currentUser.uid];
     if (_toggleDislike) {
       _toggleDislike = false;
-      newDislikesCount = bookInfo!.dislikes - 1;
-      bookInfo!.dislikes = newDislikesCount;
+      newDislikesCount = bookInfo.dislikes - 1;
+      bookInfo.dislikes = newDislikesCount;
 
-      await collRef.doc(bookInfo?.docID).update({
+      await collRef.doc(bookInfo.docID).update({
         'usersDislikes': FieldValue.arrayRemove(elementToList),
         'dislikes': newDislikesCount,
       });
     }
     if (_toggleLike) {
       _toggleLike = false;
-      newLikesCount = bookInfo!.likes - 1;
-      bookInfo!.likes = newLikesCount;
+      newLikesCount = bookInfo.likes - 1;
+      bookInfo.likes = newLikesCount;
 
-      await collRef.doc(bookInfo?.docID).update({
+      await collRef.doc(bookInfo.docID).update({
         'usersLikes': FieldValue.arrayRemove(elementToList),
         'likes': newLikesCount,
       });
     } else {
       _toggleLike = true;
-      newLikesCount = bookInfo!.likes + 1;
-      bookInfo!.likes = newLikesCount;
+      newLikesCount = bookInfo.likes + 1;
+      bookInfo.likes = newLikesCount;
 
-      await collRef.doc(bookInfo?.docID).update({
+      await collRef.doc(bookInfo.docID).update({
         'usersLikes': FieldValue.arrayUnion(elementToList),
         'likes': newLikesCount,
       });
@@ -299,29 +301,29 @@ class _DescriptionScreenState extends State<DescriptionScreen> {
     List<dynamic> elementToList = [_currentUser.uid];
     if (_toggleLike) {
       _toggleLike = false;
-      newLikesCount = bookInfo!.likes - 1;
-      bookInfo!.likes = newLikesCount;
+      newLikesCount = bookInfo.likes - 1;
+      bookInfo.likes = newLikesCount;
 
-      await collRef.doc(bookInfo?.docID).update({
+      await collRef.doc(bookInfo.docID).update({
         'usersLikes': FieldValue.arrayRemove(elementToList),
         'likes': newLikesCount,
       });
     }
     if (_toggleDislike) {
       _toggleDislike = false;
-      newDislikesCount = bookInfo!.dislikes - 1;
-      bookInfo!.dislikes = newDislikesCount;
+      newDislikesCount = bookInfo.dislikes - 1;
+      bookInfo.dislikes = newDislikesCount;
 
-      await collRef.doc(bookInfo?.docID).update({
+      await collRef.doc(bookInfo.docID).update({
         'usersDislikes': FieldValue.arrayRemove(elementToList),
         'dislikes': newDislikesCount,
       });
     } else {
       _toggleDislike = true;
-      newDislikesCount = bookInfo!.dislikes + 1;
-      bookInfo!.dislikes = newDislikesCount;
+      newDislikesCount = bookInfo.dislikes + 1;
+      bookInfo.dislikes = newDislikesCount;
 
-      await collRef.doc(bookInfo?.docID).update({
+      await collRef.doc(bookInfo.docID).update({
         'usersDislikes': FieldValue.arrayUnion(elementToList),
         'dislikes': newDislikesCount,
       });

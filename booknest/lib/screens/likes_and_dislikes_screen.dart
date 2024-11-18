@@ -196,7 +196,8 @@ class _LikesAndDislikesScreenState extends State<LikesAndDislikesScreen> {
                           shape: const RoundedRectangleBorder(),
                         ),
                         onPressed: () {
-                          goToBookDetails(context, tile);
+                          goToBookDetails(
+                              context, tile, LikesAndDislikesScreen.name);
                         },
                         child: Row(
                           children: [
@@ -259,7 +260,8 @@ class _LikesAndDislikesScreenState extends State<LikesAndDislikesScreen> {
                           shape: const RoundedRectangleBorder(),
                         ),
                         onPressed: () {
-                          goToBookDetails(context, tile);
+                          goToBookDetails(
+                              context, tile, LikesAndDislikesScreen.name);
                         },
                         child: Row(
                           children: [
